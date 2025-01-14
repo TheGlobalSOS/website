@@ -106,24 +106,13 @@
         const analytics = firebase.analytics();
         const db = firebase.firestore();
 
-        // Get session ID from hash instead of query parameters
+        // Improved session ID extraction using URL parameters
         function getSessionId() {
-            const hash = window.location.hash.substring(1); // Remove the # symbol
-            console.log('Hash from URL:', hash);
-            return hash || null;
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionId = urlParams.get('id');
+            console.log('Session ID from URL:', sessionId);
+            return sessionId;
         }
-
-        // Create New Session - Updated to use hash
-        document.getElementById('createNewSession').addEventListener('click', () => {
-            const timestamp = new Date().getTime();
-            const random = Math.random().toString(36).substring(2, 8);
-            const newSessionId = `session-${timestamp}-${random}`;
-            
-            // Use hash instead of query parameter
-            window.location.hash = newSessionId;
-            // Reload the page to initialize with new session
-            window.location.reload();
-        });
 
         // Get and validate session ID
         const sessionId = getSessionId();
@@ -197,6 +186,17 @@
                     });
             }
         }
+
+        // Create New Session - Updated to use query parameters
+        document.getElementById('createNewSession').addEventListener('click', () => {
+            const timestamp = new Date().getTime();
+            const random = Math.random().toString(36).substring(2, 8);
+            const newSessionId = `session-${timestamp}-${random}`;
+            
+            // Use query parameter instead of path
+            const baseUrl = window.location.origin;
+            window.location.href = `${baseUrl}/live-location/index.html?id=${newSessionId}`;
+        });
 
         // Test Firebase Connection
         document.getElementById('testFirebase').addEventListener('click', async () => {
