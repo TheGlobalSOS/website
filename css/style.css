@@ -667,4 +667,22 @@ body {
     .legal-content h2 {
         font-size: 1.5rem;
     }
+}
+
+/* Live Location Tracking */
+.tracking-info {
+    background: var(--white);
+    border-radius: 0.5rem;
+    padding: 1rem 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.tracking-info p {
+    margin: 0.5rem 0;
+    color: var(--text-dark);
+}
+
+.tracking-info #last-update {
+    color: var(--primary-color);
+    font-weight: 500;
 } 
