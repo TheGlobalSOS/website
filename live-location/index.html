@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Location Tracking - Global SOS</title>
+    <link rel="stylesheet" href="../css/normalize.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    
+    <!-- Google Maps -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyATj9IAZdPGXAK4E3hVw96FtQqypSmfG_w"></script>
+    
+    <style>
+        #map {
+            height: calc(100vh - 64px);
+            width: 100%;
+            margin-top: 64px;
+        }
+        .tracking-info {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-brand">
+                <a href="../index.html">
+                    <img src="../images/logo.png" alt="Global SOS Logo" class="logo">
+                    <span class="brand-name">Global SOS</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Debug Panel -->
+    <div style="position: fixed; top: 80px; right: 20px; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1000; min-width: 300px;">
+        <h3 style="margin: 0 0 10px 0;">Debug Panel</h3>
+        <div id="debugInfo" style="font-size: 14px; margin-bottom: 10px;">
+            <p>Status: <span id="connectionStatus">Checking...</span></p>
+            <p>Session ID: <span id="debugSessionId">Loading...</span></p>
+            <p>Firebase: <span id="firebaseStatus">Initializing...</span></p>
+        </div>
+        <button id="testFirebase" style="margin-right: 10px;">Test Firebase</button>
+        <button id="createNewSession">Create New Session</button>
+    </div>
+
+    <!-- Map Container -->
+    <div id="map"></div>
+    <div class="tracking-info">
+        <p>Tracking session: <span id="session-id">Loading...</span></p>
+        <p>Last updated: <span id="last-update">Connecting...</span></p>
+    </div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCDBg76ar4ks4XDD2-Uxc0i6cpniCx2whI",
+            authDomain: "globalsos-acbf4.firebaseapp.com",
+            projectId: "globalsos-acbf4",
+            storageBucket: "globalsos-acbf4.firebasestorage.app",
+            messagingSenderId: "512304262841",
+            appId: "1:512304262841:web:7d34c6cc676c7297de7568",
+            measurementId: "G-54HHS743W5"
+        };
+
+        // Initialize Firebase
+        try {
+            firebase.initializeApp(firebaseConfig);
+            document.getElementById('firebaseStatus').textContent = 'Initialized';
+            document.getElementById('connectionStatus').textContent = 'Connected';
+        } catch (error) {
+            document.getElementById('firebaseStatus').textContent = 'Error: ' + error.message;
+            document.getElementById('connectionStatus').textContent = 'Failed';
+        }
+
+        const analytics = firebase.analytics();
+        const db = firebase.firestore();
+
+        // Improved session ID extraction using URL parameters
+        function getSessionId() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionId = urlParams.get('id');
+            console.log('Session ID from URL:', sessionId);
+            return sessionId;
+        }
+
+        // Get and validate session ID
+        const sessionId = getSessionId();
+        console.log('Extracted session ID:', sessionId);
+
+        // Update UI with session info
+        if (sessionId) {
+            document.getElementById('session-id').textContent = sessionId;
+            document.getElementById('debugSessionId').textContent = sessionId;
+            document.getElementById('connectionStatus').textContent = 'Session found';
+        } else {
+            document.getElementById('session-id').textContent = 'No active session';
+            document.getElementById('debugSessionId').textContent = 'Please create a new session';
+            document.getElementById('connectionStatus').textContent = 'Waiting for session';
+        }
+
+        // Initialize map
+        let map;
+        let marker;
+        
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 15,
+                center: { lat: 0, lng: 0 },
+                styles: [
+                    {
+                        featureType: "poi",
+                        elementType: "labels",
+                        stylers: [{ visibility: "off" }]
+                    }
+                ]
+            });
+            
+            marker = new google.maps.Marker({
+                map: map,
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 8,
+                    fillColor: "#dc2626",
+                    fillOpacity: 1,
+                    strokeColor: "#ffffff",
+                    strokeWeight: 2,
+                }
+            });
+
+            // Listen for location updates
+            if (sessionId) {
+                db.collection('live_locations')
+                    .doc(sessionId)
+                    .onSnapshot((doc) => {
+                        if (doc.exists) {
+                            const data = doc.data();
+                            const position = {
+                                lat: data.latitude,
+                                lng: data.longitude
+                            };
+                            
+                            marker.setPosition(position);
+                            map.setCenter(position);
+                            
+                            const timestamp = new Date(data.timestamp.toDate());
+                            document.getElementById('last-update').textContent = 
+                                timestamp.toLocaleTimeString();
+                            document.getElementById('connectionStatus').textContent = 'Active';
+                        } else {
+                            document.getElementById('last-update').textContent = 'No data yet';
+                            document.getElementById('connectionStatus').textContent = 'Waiting for data';
+                        }
+                    }, (error) => {
+                        document.getElementById('connectionStatus').textContent = 'Error: ' + error.message;
+                    });
+            }
+        }
+
+        // Create New Session - Updated to use query parameters
+        document.getElementById('createNewSession').addEventListener('click', () => {
+            const timestamp = new Date().getTime();
+            const random = Math.random().toString(36).substring(2, 8);
+            const newSessionId = `session-${timestamp}-${random}`;
+            
+            // Use query parameter instead of path
+            const baseUrl = window.location.origin;
+            window.location.href = `${baseUrl}/live-location/index.html?id=${newSessionId}`;
+        });
+
+        // Test Firebase Connection
+        document.getElementById('testFirebase').addEventListener('click', async () => {
+            try {
+                if (!sessionId) {
+                    throw new Error('No active session. Please create a new session first.');
+                }
+
+                document.getElementById('connectionStatus').textContent = 'Testing...';
+                
+                console.log('Testing Firebase read...');
+                const readResult = await db.collection('live_locations')
+                    .doc(sessionId)
+                    .get();
+                console.log('Read success:', readResult.exists);
+
+                console.log('Testing Firebase write...');
+                await firebase.auth().signInAnonymously();
+                console.log('Anonymous auth successful');
+
+                await db.collection('live_locations')
+                    .doc(sessionId)
+                    .set({
+                        latitude: 40.7128,
+                        longitude: -74.0060,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                console.log('Write success!');
+                document.getElementById('connectionStatus').textContent = 'Test successful';
+
+            } catch (error) {
+                console.error('Firebase Test Error:', error);
+                document.getElementById('connectionStatus').textContent = 'Test failed: ' + error.message;
+                alert('Error: ' + error.message);
+            }
+        });
+
+        window.onload = initMap;
+    </script>
+</body>
+</html> 
