@@ -62,6 +62,7 @@
     </nav>
 
     <!-- Debug Panel -->
+    <!--
     <div style="position: fixed; top: 80px; right: 20px; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1000; min-width: 300px;">
         <h3 style="margin: 0 0 10px 0;">Debug Panel</h3>
         <div id="debugInfo" style="font-size: 14px; margin-bottom: 10px;">
@@ -72,6 +73,7 @@
         <button id="testFirebase" style="margin-right: 10px;">Test Firebase</button>
         <button id="createNewSession">Create New Session</button>
     </div>
+    -->
 
     <!-- Map Container -->
     <div id="map"></div>
@@ -81,6 +83,18 @@
     </div>
 
     <script>
+        // Add these fallback elements to avoid null reference errors
+        const dummyElements = `
+            <div style="display: none;">
+                <span id="connectionStatus"></span>
+                <span id="debugSessionId"></span>
+                <span id="firebaseStatus"></span>
+                <button id="testFirebase"></button>
+                <button id="createNewSession"></button>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', dummyElements);
+
         // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCDBg76ar4ks4XDD2-Uxc0i6cpniCx2whI",
@@ -129,15 +143,15 @@
         console.log('Extracted session ID:', sessionId);
 
         // Update UI with session info
-        if (sessionId) {
-            document.getElementById('session-id').textContent = sessionId;
-            document.getElementById('debugSessionId').textContent = sessionId;
-            document.getElementById('connectionStatus').textContent = 'Session found';
-        } else {
-            document.getElementById('session-id').textContent = 'No active session';
-            document.getElementById('debugSessionId').textContent = 'Please create a new session';
-            document.getElementById('connectionStatus').textContent = 'Waiting for session';
-        }
+        // if (sessionId) {
+        //     document.getElementById('session-id').textContent = sessionId;
+        //     document.getElementById('debugSessionId').textContent = sessionId;
+        //     document.getElementById('connectionStatus').textContent = 'Session found';
+        // } else {
+        //     document.getElementById('session-id').textContent = 'No active session';
+        //     document.getElementById('debugSessionId').textContent = 'Please create a new session';
+        //     document.getElementById('connectionStatus').textContent = 'Waiting for session';
+        // }
 
         // Initialize map
         let map;
