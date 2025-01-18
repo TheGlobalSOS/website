@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trip Details - Global SOS</title>
+    <link rel="stylesheet" href="../css/normalize.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    
+    <style>
+        .trip-info {
+            background: var(--white);
+            border-radius: 0.5rem;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            margin: 100px auto 20px;
+        }
+
+        .trip-info h1 {
+            color: var(--text-dark);
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .trip-detail {
+            margin: 1rem 0;
+            padding: 1rem;
+            background: var(--bg-light);
+            border-radius: 0.5rem;
+        }
+
+        .trip-detail h2 {
+            font-size: 1rem;
+            color: var(--text-light);
+            margin-bottom: 0.5rem;
+        }
+
+        .trip-detail p {
+            font-size: 1.125rem;
+            color: var(--text-dark);
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-brand">
+                <span class="brand-name">Global SOS</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Trip Info Container -->
+    <div class="trip-info">
+        <h1>Trip Details</h1>
+        <div id="trip-content">
+            <div class="trip-detail">
+                <h2>Country</h2>
+                <p id="country">Loading...</p>
+            </div>
+            <div class="trip-detail">
+                <h2>Dates</h2>
+                <p id="dates">Loading...</p>
+            </div>
+            <div class="trip-detail">
+                <h2>Flight Details</h2>
+                <p id="flight">Loading...</p>
+            </div>
+            <div class="trip-detail">
+                <h2>Hotel Information</h2>
+                <p id="hotel">Loading...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCDBg76ar4ks4XDD2-Uxc0i6cpniCx2whI",
+            authDomain: "globalsos-acbf4.firebaseapp.com",
+            projectId: "globalsos-acbf4",
+            storageBucket: "globalsos-acbf4.firebasestorage.app",
+            messagingSenderId: "512304262841",
+            appId: "1:512304262841:web:7d34c6cc676c7297de7568",
+            measurementId: "G-54HHS743W5"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const analytics = firebase.analytics();
+        const db = firebase.firestore();
+
+        // Get trip ID from hash
+        function getTripId() {
+            const hash = window.location.hash.substring(1);
+            console.log('Trip ID from URL:', hash);
+            return hash || null;
+        }
+
+        // Format date
+        function formatDate(timestamp) {
+            if (!timestamp) return 'N/A';
+            const date = timestamp.toDate();
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
+        // Load trip data
+        const tripId = getTripId();
+        if (tripId) {
+            db.collection('trips')
+                .doc(tripId)
+                .onSnapshot((doc) => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        document.getElementById('country').textContent = data.country || 'N/A';
+                        document.getElementById('dates').textContent = 
+                            `${formatDate(data.startDate)} - ${formatDate(data.endDate)}`;
+                        document.getElementById('flight').textContent = data.flight || 'N/A';
+                        document.getElementById('hotel').textContent = data.hotel || 'N/A';
+                    } else {
+                        document.getElementById('trip-content').innerHTML = 
+                            '<p style="text-align: center; color: var(--text-light);">Trip not found</p>';
+                    }
+                }, (error) => {
+                    console.error('Error loading trip:', error);
+                    document.getElementById('trip-content').innerHTML = 
+                        '<p style="text-align: center; color: var(--primary-color);">Error loading trip details</p>';
+                });
+        } else {
+            document.getElementById('trip-content').innerHTML = 
+                '<p style="text-align: center; color: var(--text-light);">No trip ID provided</p>';
+        }
+    </script>
+</body>
+</html> 
