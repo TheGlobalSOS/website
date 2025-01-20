@@ -48,6 +48,43 @@
             color: var(--text-dark);
             margin: 0;
         }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .status-item {
+            text-align: center;
+            padding: 1rem;
+            background: var(--bg-light);
+            border-radius: 0.5rem;
+        }
+
+        .status-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-label {
+            font-size: 0.875rem;
+            color: var(--text-light);
+        }
+
+        .status-value {
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+
+        .completed {
+            color: #4CAF50;
+        }
+
+        .pending {
+            color: #9E9E9E;
+        }
     </style>
 </head>
 <body>
@@ -55,30 +92,49 @@
     <nav class="navbar">
         <div class="container">
             <div class="navbar-brand">
-                <span class="brand-name">Global SOS</span>
+                <a href="../index.html">
+                    <span class="brand-name">Global SOS</span>
+                </a>
             </div>
         </div>
     </nav>
 
-    <!-- Trip Info Container -->
-    <div class="trip-info">
+    <div id="trip-content" class="trip-info">
         <h1>Trip Details</h1>
-        <div id="trip-content">
-            <div class="trip-detail">
-                <h2>Country</h2>
-                <p id="country">Loading...</p>
-            </div>
-            <div class="trip-detail">
-                <h2>Dates</h2>
-                <p id="dates">Loading...</p>
-            </div>
-            <div class="trip-detail">
-                <h2>Flight Details</h2>
-                <p id="flight">Loading...</p>
-            </div>
-            <div class="trip-detail">
-                <h2>Hotel Information</h2>
-                <p id="hotel">Loading...</p>
+        <div class="trip-detail">
+            <h2>Destination</h2>
+            <p id="country">Loading...</p>
+        </div>
+        <div class="trip-detail">
+            <h2>Travel Dates</h2>
+            <p id="dates">Loading...</p>
+        </div>
+        <div class="trip-detail">
+            <h2>Flight Information</h2>
+            <p id="flight">Loading...</p>
+        </div>
+        <div class="trip-detail">
+            <h2>Hotel Information</h2>
+            <p id="hotel">Loading...</p>
+        </div>
+        <div class="trip-detail">
+            <h2>Travel Status</h2>
+            <div class="status-grid">
+                <div class="status-item">
+                    <div id="checkin-status" class="status-icon pending">✈️</div>
+                    <div class="status-label">Online Check-in</div>
+                    <div id="checkin-text" class="status-value">Not Yet</div>
+                </div>
+                <div class="status-item">
+                    <div id="airport-status" class="status-icon pending">🏢</div>
+                    <div class="status-label">Reached Airport</div>
+                    <div id="airport-text" class="status-value">Not Yet</div>
+                </div>
+                <div class="status-item">
+                    <div id="boarded-status" class="status-icon pending">🛫</div>
+                    <div class="status-label">Boarded Flight</div>
+                    <div id="boarded-text" class="status-value">Not Yet</div>
+                </div>
             </div>
         </div>
     </div>
@@ -100,18 +156,26 @@
         const analytics = firebase.analytics();
         const db = firebase.firestore();
 
-        // Get trip ID from hash
-        function getTripId() {
+        // Get trip ID and user ID from hash
+        function getTripInfo() {
             const hash = window.location.hash.substring(1);
-            console.log('Trip ID from URL:', hash);
-            return hash || null;
+            console.log('Full hash:', hash); // Debug log
+            const [userId, tripId] = hash.split('-');
+            console.log('Parsed IDs - User:', userId, 'Trip:', tripId); // Debug log
+            return { userId, tripId };
         }
 
         // Format date
         function formatDate(timestamp) {
             if (!timestamp) return 'N/A';
-            const date = timestamp.toDate();
-            return date.toLocaleDateString('en-US', {
+            if (typeof timestamp === 'string') {
+                return new Date(timestamp).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            }
+            return timestamp.toDate().toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric'
@@ -119,30 +183,72 @@
         }
 
         // Load trip data
-        const tripId = getTripId();
-        if (tripId) {
-            db.collection('trips')
+        const { userId, tripId } = getTripInfo();
+        if (userId && tripId) {
+            console.log('Attempting to fetch trip data...'); // Debug log
+            console.log(`Path: users/${userId}/trips/${tripId}`); // Debug log
+            
+            db.collection('users')
+                .doc(userId)
+                .collection('trips')
                 .doc(tripId)
                 .onSnapshot((doc) => {
+                    console.log('Doc exists:', doc.exists); // Debug log
                     if (doc.exists) {
                         const data = doc.data();
+                        console.log('Trip data:', data); // Debug log
                         document.getElementById('country').textContent = data.country || 'N/A';
                         document.getElementById('dates').textContent = 
                             `${formatDate(data.startDate)} - ${formatDate(data.endDate)}`;
                         document.getElementById('flight').textContent = data.flight || 'N/A';
                         document.getElementById('hotel').textContent = data.hotel || 'N/A';
+                        updateStatus(data);
                     } else {
+                        console.log('Document does not exist'); // Debug log
                         document.getElementById('trip-content').innerHTML = 
                             '<p style="text-align: center; color: var(--text-light);">Trip not found</p>';
                     }
                 }, (error) => {
-                    console.error('Error loading trip:', error);
+                    console.error('Error loading trip:', error); // Debug log
                     document.getElementById('trip-content').innerHTML = 
-                        '<p style="text-align: center; color: var(--primary-color);">Error loading trip details</p>';
+                        `<p style="text-align: center; color: var(--primary-color);">Error: ${error.message}</p>`;
                 });
         } else {
+            console.log('Invalid URL format'); // Debug log
             document.getElementById('trip-content').innerHTML = 
-                '<p style="text-align: center; color: var(--text-light);">No trip ID provided</p>';
+                '<p style="text-align: center; color: var(--text-light);">Invalid trip URL</p>';
+        }
+
+        function updateStatus(data) {
+            // Update check-in status
+            const checkinIcon = document.getElementById('checkin-status');
+            const checkinText = document.getElementById('checkin-text');
+            if (data.isCheckedIn) {
+                checkinIcon.className = 'status-icon completed';
+                checkinText.textContent = 'Completed';
+            } else {
+                checkinText.textContent = 'Not Yet';
+            }
+
+            // Update airport status
+            const airportIcon = document.getElementById('airport-status');
+            const airportText = document.getElementById('airport-text');
+            if (data.reachedAirport) {
+                airportIcon.className = 'status-icon completed';
+                airportText.textContent = 'Arrived';
+            } else {
+                airportText.textContent = 'Not Yet';
+            }
+
+            // Update boarding status
+            const boardedIcon = document.getElementById('boarded-status');
+            const boardedText = document.getElementById('boarded-text');
+            if (data.boardedFlight) {
+                boardedIcon.className = 'status-icon completed';
+                boardedText.textContent = 'On Board';
+            } else {
+                boardedText.textContent = 'Not Yet';
+            }
         }
     </script>
 </body>
