@@ -87,6 +87,7 @@
     <!-- Map Container -->
     <div id="map"></div>
     <div class="tracking-info">
+        <p><span id="user-name">User</span>'s trip details</p>
         <p>Tracking session: <span id="session-id">Loading...</span></p>
         <p>Last updated: <span id="last-update">Connecting...</span></p>
     </div>
@@ -193,6 +194,22 @@
 
             // Listen for location updates
             if (sessionId) {
+                // First, get the user details
+                db.collection('users')
+                    .doc(sessionId)
+                    .get()
+                    .then((userDoc) => {
+                        if (userDoc.exists) {
+                            const userData = userDoc.data();
+                            const userName = userData.personal_info?.basic_info?.name || 'User';
+                            document.getElementById('user-name').textContent = userName;
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Error fetching user details:', error);
+                    });
+
+                // Existing location tracking code
                 db.collection('live_locations')
                     .doc(sessionId)
                     .onSnapshot((doc) => {
